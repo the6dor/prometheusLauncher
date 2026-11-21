@@ -23,6 +23,7 @@ namespace Prometheus.Launcher
         [STAThread]
         private static int Main(string[] args)
         {
+            DiscordPresence.Log("start: " + string.Join(" ", args).Split(new[] { "ticket=" }, StringSplitOptions.None)[0]);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -57,6 +58,7 @@ namespace Prometheus.Launcher
 
         private static int Play(string link)
         {
+            DiscordPresence.Log("play: launcher " + System.IO.File.GetLastWriteTime(Application.ExecutablePath).ToString("s") + " from " + Application.ExecutablePath);
             var query = ParseQuery(link);
             query.TryGetValue("ticket", out var ticket);
             query.TryGetValue("year", out var year);
@@ -75,6 +77,7 @@ namespace Prometheus.Launcher
             {
                 Installer.InstallSelf(); // keeps the Play link pointing at this launcher
                 var exe = await Installer.EnsureClient(year, window.Report);
+                DiscordPresence.Log("play: starting " + exe);
                 window.Report("Connecting to Prometheus ...", null);
                 // The server address is built into the launcher (Installer.BaseUrl), never taken from the link,
                 // so a link can't point the client at someone else's server.

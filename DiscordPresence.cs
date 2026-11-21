@@ -28,7 +28,17 @@ namespace Prometheus.Launcher
                 Directory.CreateDirectory(dir);
                 File.AppendAllText(Path.Combine(dir, "discord.log"), DateTime.Now.ToString("s") + " " + line + Environment.NewLine);
             }
-            catch (Exception) { }
+            catch (Exception e)
+            {
+                // Started with low permissions (some browsers do), AppData isn't writable; LocalLow always is.
+                try
+                {
+                    var low = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow", "Prometheus");
+                    Directory.CreateDirectory(low);
+                    File.AppendAllText(Path.Combine(low, "discord.log"), DateTime.Now.ToString("s") + " (" + e.GetType().Name + ") " + line + Environment.NewLine);
+                }
+                catch (Exception) { }
+            }
         }
 
         public static void ShowUntilExit(Process game, string ticket)

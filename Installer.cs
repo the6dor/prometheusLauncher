@@ -176,9 +176,6 @@ namespace Prometheus.Launcher
                 if (Directory.Exists(temp)) Directory.Delete(temp, true);
                 await Task.Run(() => ZipFile.ExtractToDirectory(zip, temp));
                 File.Delete(zip);
-                // The client reads its website address from AppSettings.xml.
-                File.WriteAllText(Path.Combine(temp, "AppSettings.xml"),
-                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<Settings>\r\n\t<ContentFolder>Content</ContentFolder>\r\n\t<BaseUrl>" + baseUrl + "</BaseUrl>\r\n</Settings>\r\n");
                 if (Directory.Exists(target)) Directory.Delete(target, true);
                 Directory.Move(temp, target);
                 File.WriteAllText(Path.Combine(target, ".complete"), hash);
@@ -194,6 +191,11 @@ namespace Prometheus.Launcher
         // our name avoids that. The file is byte-for-byte the same, so its published fingerprint still matches.
         private static string PlayerExe(string versionDir)
         {
+            // The client reads its website address from AppSettings.xml. Rewritten whenever it differs, so an install
+            // made against another address (such as a local test server) can't stay stuck on it.
+            var settings = Path.Combine(versionDir, "AppSettings.xml");
+            var wanted = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<Settings>\r\n\t<ContentFolder>Content</ContentFolder>\r\n\t<BaseUrl>" + BaseUrl + "</BaseUrl>\r\n</Settings>\r\n";
+            if (!File.Exists(settings) || File.ReadAllText(settings) != wanted) File.WriteAllText(settings, wanted);
             var ours = Path.Combine(versionDir, "PrometheusPlayer.exe");
             if (!File.Exists(ours)) File.Copy(Path.Combine(versionDir, "RobloxPlayerBeta.exe"), ours);
             return ours;
