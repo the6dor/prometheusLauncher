@@ -19,7 +19,7 @@ namespace Prometheus.Launcher
         // Discord application "Prometheus" (developer portal). Its art asset "logo" is Assets/flame-256.png.
         private const string AppId = "1573786511739060255";
 
-        // Each step goes to %LOCALAPPDATA%Prometheuslogsdiscord.log, so a "nothing shows" report can be checked.
+        // Each step goes to %LOCALAPPDATA%\Prometheus\logs\discord.log, so a "nothing shows" report can be checked.
         internal static void Log(string line)
         {
             try
@@ -45,31 +45,53 @@ namespace Prometheus.Launcher
         {
             Log("game " + game.Id + " started");
             if (AppId.Length == 0) return;
+            Dictionary<string, object> activity;
             try
             {
                 var placeId = PlaceIdFromTicket(ticket);
                 if (placeId == null) { Log("no placeId in ticket"); return; }
-                var activity = BuildActivity(placeId.Value);
-                using (var pipe = Connect())
+                activity = BuildActivity(placeId.Value); // built once, so the timer keeps the real start time
+            }
+            catch (Exception e) { Log("skipped: " + e); return; }
+
+            // Until the game closes: connect, show the activity, refresh it every 15 s (a failed refresh means Discord
+            // went away). Discord not running, closed or restarted -> try again 10 s later.
+            var waiting = false;
+            while (!game.HasExited)
+            {
+                try
                 {
-                    if (pipe == null) { Log("Discord is not running"); return; }
-                    Send(pipe, 0, new Dictionary<string, object> { ["v"] = 1, ["client_id"] = AppId });
-                    Log("handshake: " + Read(pipe)); // READY, or an error such as an unknown app id
-                    Send(pipe, 1, new Dictionary<string, object>
+                    using (var pipe = Connect())
                     {
-                        ["cmd"] = "SET_ACTIVITY",
-                        ["args"] = new Dictionary<string, object> { ["pid"] = game.Id, ["activity"] = activity },
-                        ["nonce"] = Guid.NewGuid().ToString(),
-                    });
-                    Log("set activity: " + Read(pipe));
-                    game.WaitForExit();
-                    Log("game closed"); // Discord clears the activity when this pipe closes
+                        if (pipe == null)
+                        {
+                            if (!waiting) Log("Discord is not running; retrying every 10 s");
+                            waiting = true;
+                            game.WaitForExit(10000);
+                            continue;
+                        }
+                        waiting = false;
+                        Send(pipe, 0, new Dictionary<string, object> { ["v"] = 1, ["client_id"] = AppId });
+                        Log("handshake: " + Read(pipe)); // READY, or an error such as an unknown app id
+                        do
+                        {
+                            Send(pipe, 1, new Dictionary<string, object>
+                            {
+                                ["cmd"] = "SET_ACTIVITY",
+                                ["args"] = new Dictionary<string, object> { ["pid"] = game.Id, ["activity"] = activity },
+                                ["nonce"] = Guid.NewGuid().ToString(),
+                            });
+                            Read(pipe);
+                        } while (!game.WaitForExit(15000));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log("Discord connection lost (" + e.GetType().Name + "); retrying in 10 s"); // never get in the way of playing
+                    game.WaitForExit(10000);
                 }
             }
-            catch (Exception e)
-            {
-                Log("skipped: " + e); // never get in the way of playing
-            }
+            Log("game closed"); // Discord clears the activity when the pipe closes
         }
 
         /// <summary>The join ticket is a JWT whose payload carries "placeId"; the signature doesn't matter here.</summary>
