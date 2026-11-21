@@ -87,6 +87,7 @@ namespace Prometheus.Launcher
                 });
             });
             Application.Run(connecting);
+            Installer.UpdateSelf(); // after the game started, so updating never delays playing
             // The window closes once the game is up; stay in the background for Discord until the game closes.
             if (connecting.Game is Process game && !game.HasExited) DiscordPresence.ShowUntilExit(game, ticket);
             else DiscordPresence.Log("no running game after the window closed");

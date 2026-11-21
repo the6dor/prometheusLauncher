@@ -59,6 +59,35 @@ namespace Prometheus.Launcher
             }
         }
 
+        /// <summary>
+        /// Replace the installed launcher with the website's copy when they differ; takes effect on the next start.
+        /// Windows lets a running program be renamed, so the current one moves aside to .old and is deleted later.
+        /// Any failure leaves the installed launcher as it was.
+        /// </summary>
+        public static void UpdateSelf()
+        {
+            var old = InstalledExe + ".old";
+            try { if (File.Exists(old)) File.Delete(old); } catch (Exception) { /* still running; next time */ }
+            try
+            {
+                byte[] latest;
+                using (var http = NewClient(BaseUrl))
+                    latest = http.GetByteArrayAsync(BaseUrl + "/client/PrometheusLauncher.exe").Result;
+                // Only a Windows program ("MZ" header) of a sane size replaces the launcher.
+                if (latest.Length < 16 * 1024 || latest.Length > 16 * 1024 * 1024 || latest[0] != 'M' || latest[1] != 'Z') return;
+                if (File.Exists(InstalledExe) && File.ReadAllBytes(InstalledExe).SequenceEqual(latest)) return;
+                var fresh = InstalledExe + ".new";
+                File.WriteAllBytes(fresh, latest);
+                if (File.Exists(InstalledExe))
+                {
+                    if (File.Exists(old)) return; // the previous update's old copy is still running; next time
+                    File.Move(InstalledExe, old);
+                }
+                File.Move(fresh, InstalledExe);
+            }
+            catch (Exception e) { System.Diagnostics.Trace.WriteLine("Launcher update skipped: " + e.Message); }
+        }
+
         private class Manifest
         {
             public string version { get; set; }
