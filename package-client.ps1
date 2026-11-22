@@ -1,8 +1,8 @@
 # Packages a client folder for the launcher.
 # Writes into <OutDir>\<Year>\:
-#   player-<Year>-<Version>.zip    the files players download
+#   prometheus-<Year>-<Version>.zip     the files players download
 #   manifest.json                  what the launcher reads: version, zip name, SHA-256, size
-#   player-<Year>-<Version>.files.txt  SHA-256 of every file in the zip (for the public transparency list)
+#   prometheus-<Year>-<Version>.files.txt  SHA-256 of every file in the zip (the public transparency list)
 # Example:
 #   .\package-client.ps1 -Source C:\path\to\Player -Year 2021 -Version 0.463.0.417004-p1 -OutDir C:\path\to\client-downloads
 param(
