@@ -118,11 +118,23 @@ namespace Prometheus.Launcher
                 {
                     var places = json.Deserialize<List<Dictionary<string, object>>>(
                         http.GetStringAsync($"{baseUrl}/apisite/games/v1/games/multiget-place-details?placeIds={placeId}").Result);
-                    if (places.Count > 0) { name = places[0]["name"] as string ?? name; builder = places[0]["builder"] as string; }
-                    var thumbs = json.Deserialize<Dictionary<string, object>>(
-                        http.GetStringAsync($"{baseUrl}/apisite/thumbnails/v1/assets?assetIds={placeId}&format=png&size=420x420").Result);
-                    if (thumbs["data"] is System.Collections.ArrayList data && data.Count > 0 && data[0] is Dictionary<string, object> t && t["imageUrl"] is string url)
-                        image = url.StartsWith("/") ? baseUrl + url : url;
+                    object universeId = null;
+                    if (places.Count > 0)
+                    {
+                        name = places[0]["name"] as string ?? name;
+                        builder = places[0]["builder"] as string;
+                        places[0].TryGetValue("universeId", out universeId);
+                    }
+                    // The game's square icon fits Discord's square picture; the 16:9 thumbnail only if there's no approved icon.
+                    string FirstImage(string url)
+                    {
+                        var result = json.Deserialize<Dictionary<string, object>>(http.GetStringAsync(url).Result);
+                        return result["data"] is System.Collections.ArrayList data && data.Count > 0 &&
+                               data[0] is Dictionary<string, object> t && t["imageUrl"] is string u ? u : null;
+                    }
+                    var found = (universeId != null ? FirstImage($"{baseUrl}/apisite/thumbnails/v1/games/icons?universeIds={universeId}&size=512x512&format=png") : null)
+                                ?? FirstImage($"{baseUrl}/apisite/thumbnails/v1/assets?assetIds={placeId}&format=png&size=420x420");
+                    if (found != null) image = found.StartsWith("/") ? baseUrl + found : found;
                 }
                 catch (Exception e) { Trace.WriteLine("Game info for Discord failed: " + e.Message); }
             }
