@@ -45,7 +45,13 @@ namespace Prometheus.Launcher
             if (!string.Equals(Path.GetFullPath(self), Path.GetFullPath(InstalledExe), StringComparison.OrdinalIgnoreCase))
             {
                 try { File.Copy(self, InstalledExe, true); }
-                catch (IOException) { /* an older copy is running; the next install replaces it */ }
+                catch (IOException)
+                {
+                    // An older launcher is still running (waiting for a game): move it aside, which Windows allows.
+                    var old = InstalledExe + ".old";
+                    try { if (File.Exists(old)) File.Delete(old); } catch (Exception) { }
+                    if (!File.Exists(old)) { File.Move(InstalledExe, old); File.Copy(self, InstalledExe, true); }
+                }
                 var devBase = Path.Combine(Path.GetDirectoryName(self), "base-url.txt");
                 if (File.Exists(devBase)) File.Copy(devBase, Path.Combine(InstallDir, "base-url.txt"), true);
             }
@@ -155,7 +161,7 @@ namespace Prometheus.Launcher
                         {
                             await output.WriteAsync(buffer, 0, read);
                             done += read;
-                            if (total > 0) report($"Downloading Prometheus {year} ... {done * 100 / total}%", (float)done / total);
+                            if (total > 0) report($"Downloading Prometheus {year.Replace("-studio", " Studio")} ... {done * 100 / total}%", (float)done / total);
                         }
                     }
                 }
@@ -196,9 +202,28 @@ namespace Prometheus.Launcher
             var settings = Path.Combine(versionDir, "AppSettings.xml");
             var wanted = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<Settings>\r\n\t<ContentFolder>Content</ContentFolder>\r\n\t<BaseUrl>" + BaseUrl + "</BaseUrl>\r\n</Settings>\r\n";
             if (!File.Exists(settings) || File.ReadAllText(settings) != wanted) File.WriteAllText(settings, wanted);
+            var studio = Path.Combine(versionDir, "RobloxStudioBeta.exe");
+            if (File.Exists(studio)) return studio; // a Studio package ("2021-studio"); Discord doesn't detect Studio
             var ours = Path.Combine(versionDir, "PrometheusPlayer.exe");
             if (!File.Exists(ours)) File.Copy(Path.Combine(versionDir, "RobloxPlayerBeta.exe"), ours);
             return ours;
+        }
+
+        /// <summary>Start menu entry that opens Studio through the launcher, so it stays up to date.</summary>
+        public static void StudioShortcut(string year, string studioExe)
+        {
+            var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            var shell = Activator.CreateInstance(shellType);
+            var flags = System.Reflection.BindingFlags.InvokeMethod;
+            var link = shellType.InvokeMember("CreateShortcut", flags, null, shell, new object[] { Path.Combine(programs, $"Prometheus Studio {year}.lnk") });
+            var set = System.Reflection.BindingFlags.SetProperty;
+            var t = link.GetType();
+            t.InvokeMember("TargetPath", set, null, link, new object[] { InstalledExe });
+            t.InvokeMember("Arguments", set, null, link, new object[] { $"\"{Scheme}://studio?year={year}\"" });
+            t.InvokeMember("IconLocation", set, null, link, new object[] { studioExe + ",0" });
+            t.InvokeMember("Description", set, null, link, new object[] { $"Prometheus Studio {year}" });
+            t.InvokeMember("Save", flags, null, link, null);
         }
 
         private static string Installed(string yearDir) =>

@@ -7,7 +7,7 @@
 #   .\package-client.ps1 -Source C:\path\to\Player -Year 2021 -Version 0.463.0.417004-p1 -OutDir C:\path\to\client-downloads
 param(
     [Parameter(Mandatory)] [string] $Source,
-    [Parameter(Mandatory)] [ValidatePattern('^20\d\d$')] [string] $Year,
+    [Parameter(Mandatory)] [ValidatePattern('^20\d\d(-studio)?$')] [string] $Year,  # "2021" = player, "2021-studio" = Studio
     [Parameter(Mandatory)] [ValidatePattern('^[A-Za-z0-9._-]+$')] [string] $Version,
     [Parameter(Mandatory)] [string] $OutDir
 )
@@ -17,7 +17,7 @@ Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $source = (Resolve-Path $Source).Path.TrimEnd('\')
 $dest = Join-Path $OutDir $Year
 New-Item -ItemType Directory -Force $dest | Out-Null
-$name = "player-$Year-$Version"
+$name = "prometheus-$Year-$Version"
 $zipPath = Join-Path $dest "$name.zip"
 if (Test-Path $zipPath) { throw "$zipPath already exists; pick a new -Version so cached copies never go stale." }
 

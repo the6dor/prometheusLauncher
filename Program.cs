@@ -56,12 +56,34 @@ namespace Prometheus.Launcher
             return 0;
         }
 
+        /// <summary>"prometheus-player://studio?year=2021": install or update that year's Studio, add a Start menu entry, open it.</summary>
+        private static int Studio(string year)
+        {
+            if (year != "2021")
+            {
+                MessageBox.Show("Studio " + (year ?? "") + " is coming soon.", "Prometheus", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return 1;
+            }
+            var opening = new ConnectingWindow("Opening Prometheus Studio ...", async window =>
+            {
+                Installer.InstallSelf();
+                var exe = await Installer.EnsureClient(year + "-studio", window.Report);
+                try { Installer.StudioShortcut(year, exe); } catch (Exception e) { DiscordPresence.Log("studio shortcut skipped: " + e.Message); }
+                window.Report("Opening Prometheus Studio ...", null);
+                return Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = System.IO.Path.GetDirectoryName(exe), UseShellExecute = false });
+            });
+            Application.Run(opening);
+            Installer.UpdateSelf();
+            return 0;
+        }
+
         private static int Play(string link)
         {
             DiscordPresence.Log("play: launcher " + System.IO.File.GetLastWriteTime(Application.ExecutablePath).ToString("s") + " from " + Application.ExecutablePath);
             var query = ParseQuery(link);
             query.TryGetValue("ticket", out var ticket);
             query.TryGetValue("year", out var year);
+            if (link.StartsWith(Installer.Scheme + "://studio", StringComparison.OrdinalIgnoreCase)) return Studio(year);
             if (string.IsNullOrEmpty(ticket))
             {
                 MessageBox.Show("This Play link is incomplete. Press Play on the website again.", "Prometheus", MessageBoxButtons.OK, MessageBoxIcon.Warning);
