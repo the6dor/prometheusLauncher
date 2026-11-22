@@ -12,6 +12,10 @@ The official launcher for [Prometheus](https://www.prmths.lol). Download it at h
 
 The website address is built in, so a Play link can't point the launcher at another server.
 
+## See exactly what you're installing
+
+The [`transparency`](transparency/) folder lists every file of the 2021 player and Studio with its SHA-256 fingerprint, shows every byte that differs from Roblox's original programs, and has a small script to check your own install.
+
 ## Building
 
 Needs the .NET SDK. The launcher targets .NET Framework 4.8, which ships with Windows 10 and 11.
