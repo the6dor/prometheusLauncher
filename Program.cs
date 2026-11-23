@@ -20,9 +20,15 @@ namespace Prometheus.Launcher
         /// "prometheus-player://join?year=2021&amp;ticket=...": opened by the website's Play button.
         /// "--preview file.png": draw the window for design checks.
         /// </summary>
+        [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+
         [STAThread]
         private static int Main(string[] args)
         {
+            // Our own taskbar identity. Without it Windows matches our windows to the "Prometheus Studio" Start menu
+            // shortcut (it points at this exe) and shows Studio's icon in the taskbar instead of the flame.
+            SetCurrentProcessExplicitAppUserModelID("Prometheus.Launcher");
             DiscordPresence.Log("start: " + string.Join(" ", args).Split(new[] { "ticket=" }, StringSplitOptions.None)[0]);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
